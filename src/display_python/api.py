@@ -33,7 +33,7 @@ from viam.components.component_base import ComponentBase
 from ..proto.display_grpc import DisplayServiceBase, DisplayServiceStub
 
 # update the below with actual methods for your API!
-from ..proto.display_pb2 import EchoRequest, EchoResponse
+from ..proto.display_pb2 import DisplayBytesRequest, DisplayBytesResponse, WriteStringRequest, WriteStringResponse, DrawLineRequest, DrawLineResponse, ResetRequest, ResetResponse
 
 
 class Display(ComponentBase):
@@ -42,21 +42,50 @@ class Display(ComponentBase):
 
     # update with actual API methods
     @abc.abstractmethod
-    async def echo(self, text: str) -> str:
+    async def display_bytes(self, data: bytes) -> str:
+        ...
+    async def write_string(self, x: int, y: int, text: str) -> str:
+        ...
+    async def draw_line(self, x_1: int, y_1: int, x_2: int, y_2: int) -> str:
+        ...
+    async def reset(self):
         ...
 
 class DisplayRPCService(DisplayServiceBase, ResourceRPCServiceBase):
 
     RESOURCE_TYPE = Display
 
-    # update with actual API methods
-    async def Echo(self, stream: Stream[EchoRequest, EchoResponse]) -> None:
+    async def DisplayBytes(self, stream: Stream[DisplayBytesRequest, DisplayBytesResponse]) -> None:
         request = await stream.recv_message()
         assert request is not None
         name = request.name
         service = self.get_resource(name)
-        resp = await service.say(request.text)
-        await stream.send_message(EchoResponse(text=resp))
+        resp = await service.display_bytes(request.data)
+        await stream.send_message(DisplayBytesResponse(text=resp))
+     
+    async def WriteString(self, stream: Stream[WriteStringRequest, WriteStringResponse]) -> None:
+        request = await stream.recv_message()
+        assert request is not None
+        name = request.name
+        service = self.get_resource(name)
+        resp = await service.write_string(request.x, request.y, request.text)
+        await stream.send_message(WriteStringResponse(text=resp))
+
+    async def DrawLine(self, stream: Stream[DrawLineRequest, DrawLineResponse]) -> None:
+        request = await stream.recv_message()
+        assert request is not None
+        name = request.name
+        service = self.get_resource(name)
+        resp = await service.draw_line(request.x_1, request.y_1, request.x_2, request.y_2)
+        await stream.send_message(DrawLineResponse(text=resp))
+
+    async def Reset(self, stream: Stream[ResetRequest, ResetResponse]) -> None:
+        request = await stream.recv_message()
+        assert request is not None
+        name = request.name
+        service = self.get_resource(name)
+        resp = await service.reset()
+        await stream.send_message(ResetResponse(text=resp))
 
 class DisplayClient(Display):
 
@@ -65,8 +94,22 @@ class DisplayClient(Display):
         self.client = DisplayServiceStub(channel)
         super().__init__(name)
 
-    # update with actual API methods
-    async def echo(self, text: str) -> str:
-        request = EchoRequest(name=self.name, text=text)
-        response: EchoResponse = await self.client.Echo(request)
+    async def display_bytes(self, data: bytes) -> str:
+        request = DisplayBytesRequest(name=self.name, data=data)
+        response: DisplayBytesResponse = await self.client.DisplayBytes(request)
+        return response.text
+    
+    async def write_string(self, x: int, y: int, text: str) -> str:
+        request = WriteStringRequest(name=self.name, x=x, y=y, text=text)
+        response: WriteStringResponse = await self.client.WriteString(request)
+        return response.text
+    
+    async def draw_line(self, x_1: int, y_1: int, x_2: int, y_2: int) -> str:
+        request = DrawLineRequest(name=self.name, x_1=x_1, y_1=y_1, x_2=x_2, y_2=y_2)
+        response: DrawLineResponse = await self.client.DrawLine(request)
+        return response.text
+    
+    async def reset(self) -> str:
+        request = ResetRequest(name=self.name)
+        response: ResetResponse = await self.client.Reset(request)
         return response.text

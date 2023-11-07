@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/edaniels/golog"
+	"go.viam.com/utils/protoutils"
 	"go.viam.com/utils/rpc"
 
 	pb "github.com/viam-labs/display-api/src/display_go/grpc"
@@ -46,8 +47,10 @@ func init() {
 // Display defines the Go interface for the component (should match the protobuf methods.)
 type Display interface {
 	resource.Resource
-	// replace with actual methods!
-	Echo(ctx context.Context, text string) error
+	DisplayBytes(ctx context.Context, data []byte) error
+	WriteString(ctx context.Context, xloc, yloc int, text string) error
+	DrawLine(ctx context.Context, x1, y1, x2, y2 int) error
+	Reset(ctx context.Context) error
 }
 
 // serviceServer implements the Display RPC service from display.proto.
@@ -61,17 +64,52 @@ func NewRPCServiceServer(coll resource.APIResourceCollection[Display]) interface
 	return &serviceServer{coll: coll}
 }
 
-// replace with methods that match your proto!
-func (s *serviceServer) Echo(ctx context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
+func (s *serviceServer) DisplayBytes(ctx context.Context, req *pb.DisplayBytesRequest) (*pb.DisplayBytesResponse, error) {
 	g, err := s.coll.Resource(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	err = g.Echo(ctx, req.Text)
+	err = g.DisplayBytes(ctx, req.Data)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.EchoResponse{}, nil
+	return &pb.DisplayBytesResponse{}, nil
+}
+
+func (s *serviceServer) WriteString(ctx context.Context, req *pb.WriteStringRequest) (*pb.WriteStringResponse, error) {
+	g, err := s.coll.Resource(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = g.WriteString(ctx, int(req.Xloc), int(req.Yloc), req.Text)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.WriteStringResponse{}, nil
+}
+
+func (s *serviceServer) DrawLine(ctx context.Context, req *pb.DrawLineRequest) (*pb.DrawLineResponse, error) {
+	g, err := s.coll.Resource(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = g.DrawLine(ctx, int(req.X1), int(req.Y1), int(req.X2), int(req.Y2))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DrawLineResponse{}, nil
+}
+
+func (s *serviceServer) Reset(ctx context.Context, req *pb.ResetRequest) (*pb.ResetResponse, error) {
+	g, err := s.coll.Resource(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = g.Reset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.ResetResponse{}, nil
 }
 
 // NewClientFromConn creates a new Display RPC client from an existing connection.
@@ -108,14 +146,52 @@ func clientFromSvcClient(sc *serviceClient, name string) Display {
 	return &client{sc, name}
 }
 
-// replace with actual methods that match your proto!
-func (c *client) Echo(ctx context.Context, text string) error {
-	_, err := c.client.Echo(ctx, &pb.EchoRequest{
-		Name:      c.name,
-		Text:  text
+func (c *client) WriteString(ctx context.Context, xloc, yloc int, text string) error {
+	_, err := c.client.WriteString(ctx, &pb.WriteStringRequest{
+		Name: c.name,
+		Xloc: int32(xloc),
+		Yloc: int32(yloc),
+		Text: text,
 	})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+func (c *client) DrawLine(ctx context.Context, x1, y1, x2, y2 int) error {
+	_, err := c.client.DrawLine(ctx, &pb.DrawLineRequest{
+		Name: c.name,
+		X1:   int32(x1),
+		Y1:   int32(y1),
+		X2:   int32(x2),
+		Y2:   int32(y2),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (c *client) Reset(ctx context.Context) error {
+	_, err := c.client.Reset(ctx, &pb.ResetRequest{
+		Name: c.name,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *client) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	command, err := protoutils.StructToStructPb(cmd)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.client.DoCommand(ctx, &pb.DoCommandRequest{
+		Name:    c.name,
+		Command: command,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Result.AsMap(), nil
 }

@@ -1,25 +1,67 @@
 syntax = "proto3";
 
-package viam-labs.components.display.v1;
+package viamlabs.component.display.v1;
 
 import "google/api/annotations.proto";
 
-option go_package = "./display-api";
+option go_package = "github.com/viam-labs/display-api/src/proto/display";
 
 service DisplayService {
-  // sample 'Echo' method - replace this with the methods your API needs, see https://protobuf.dev/programming-guides/proto3/
-  rpc Echo(EchoRequest) returns (EchoResponse) {
+  rpc DisplayBytes(DisplayBytesRequest) returns (DisplayBytesResponse) {
     option (google.api.http) = {
-      post: "/acme/api/v1/service/display/{name}/echo"
+      post: "/acme/api/v1/component/display/{name}/display_bytes"
+    };
+  }
+
+  rpc WriteString(WriteStringRequest) returns (WriteStringResponse) {
+    option (google.api.http) = {
+      post: "/acme/api/v1/component/display/{name}/write_string"
+    };
+  }
+
+  rpc DrawLine(DrawLineRequest) returns (DrawLineResponse) {
+    option (google.api.http) = {
+      post: "/acme/api/v1/component/display/{name}/draw_line"
+    };
+  }
+
+  rpc Reset(ResetRequest) returns (ResetResponse) {
+    option (google.api.http) = {
+      post: "/acme/api/v1/component/display/{name}/reset"
     };
   }
 }
 
-message EchoRequest {
+message DisplayBytesRequest {
   string name = 1;
-  string text = 2;
+  bytes data = 2;
 }
 
-message EchoResponse {
-  string text = 1;
+message DisplayBytesResponse {
+}
+
+message WriteStringRequest {
+  string name = 1;
+  int32 xloc = 2;
+  int32 yloc = 3;
+  string text = 4;
+}
+
+message WriteStringResponse {
+}
+
+message DrawLineRequest {
+  string name = 1;
+  int32 x1 = 2;
+  int32 y1 = 3;
+  int32 x2 = 4;
+  int32 y2 = 5;
+}
+
+message DrawLineResponse {
+}
+message ResetRequest {
+  string name = 1;
+}
+message ResetResponse {
 }

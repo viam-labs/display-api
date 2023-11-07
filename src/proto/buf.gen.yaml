@@ -1,0 +1,23 @@
+# note - after buf generate change this line in display_grpc.py:
+# from . import display_pb2
+version: v1
+plugins:
+  - name: python
+    out: display_python/grpc
+  - name: grpclib_python
+    out: display_python/grpc
+  - name: mypy
+    out: display_python/grpc
+  - name: go
+    out: display_go/grpc
+    opt:
+      - paths=source_relative
+  - name: go-grpc
+    out: display_go/grpc
+    opt:
+      - paths=source_relative
+  - name: grpc-gateway
+    out: display_go/grpc
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true
